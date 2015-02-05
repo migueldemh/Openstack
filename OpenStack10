@@ -1,0 +1,353 @@
+OpenStack networking
+-----------------------
+-----------------------
+Check available networks in Dashboard and using command neutron. 
+
+(neutron) net-list
++--------------------------------------+-------------------+------------------------------------------------------+
+| id                                   | name              | subnets                                              |
++--------------------------------------+-------------------+------------------------------------------------------+
+| 4c2c928d-5adf-44a1-9e6b-722978cf089f |               net | 4043eb97-9246-417e-8677-cbecbcc47832 10.0.8.0/24     |
+| 53afb2ed-8c17-498e-aaac-6cff5ff8bdd5 | ext-net           | 7ea280e5-c2fa-438b-84be-d7ac491aa02a 130.233.42.0/24 |+--------------------------------------+-------------------+------------------------------------------------------+
+
+**********************************************************************************************************************************
+
+Create two new networks.subnets 10.1.0.0/24 and 10.128.0.0/24 for the networks.
+
+
+http://docs.openstack.org/user-guide/content/cli_subnets.html
+
+
+(neutron) net-create net1 
+Created a new network:
++----------------+--------------------------------------+
+| Field          | Value                                |
++----------------+--------------------------------------+
+| admin_state_up | True                                 |
+| id             | 15f52296-a11d-4bdb-b997-ceea03de2be7 |
+| name           | net1                                 |
+| shared         | False                                |
+| status         | ACTIVE                               |
+| subnets        |                                      |
+| tenant_id      | 6d42350d6ab94095a799f42d86e8b970     |
+
++----------------+--------------------------------------+
+
+(neutron) subnet-create net1 10.1.0.0/24 --name subnet1 --no-gateway
+Created a new subnet:
+
++------------------+--------------------------------------------+
+| Field            | Value                                      |
++------------------+--------------------------------------------+
+| allocation_pools | {"start": "10.1.0.1", "end": "10.1.0.254"} |
+| cidr             | 10.1.0.0/24                                |
+| dns_nameservers  |                                            |
+| enable_dhcp      | True                                       |
+| gateway_ip       |                                            |
+| host_routes      |                                            |
+| id               | b9b80e10-52b3-4494-9996-c234284b5a08       |
+| ip_version       | 4                                          |
+| name             | subnet1                                    |
+| network_id       | 15f52296-a11d-4bdb-b997-ceea03de2be7       |
+| tenant_id        | 6d42350d6ab94095a799f42d86e8b970           |
++------------------+--------------------------------------------+
+
+(neutron) net-create net2 
+Created a new network:
+
++----------------+--------------------------------------+
+| Field          | Value                                |
++----------------+--------------------------------------+
+| admin_state_up | True                                 |
+| id             | a59939d3-69fa-43be-aa8a-752788894766 |
+| name           | net2                                 |
+| shared         | False                                |
+| status         | ACTIVE                               |
+| subnets        |                                      |
+| tenant_id      | 6d42350d6ab94095a799f42d86e8b970     |
++----------------+--------------------------------------+
+
+(neutron) subnet-create net2 10.128.0.0/24 --name subnet2 --no-gateway
+Created a new subnet:
+
++------------------+------------------------------------------------+
+| Field            | Value                                          |
++------------------+------------------------------------------------+
+| allocation_pools | {"start": "10.128.0.1", "end": "10.128.0.254"} |
+| cidr             | 10.128.0.0/24                                  |
+| dns_nameservers  |                                                |
+| enable_dhcp      | True                                           |
+| gateway_ip       |                                                |
+| host_routes      |                                                |
+| id               | 39933a43-a1f3-4962-b4c2-c27dad77f619           |
+| ip_version       | 4                                              |
+| name             | subnet2                                        |
+| network_id       | a59939d3-69fa-43be-aa8a-752788894766           |
+| tenant_id        | 6d42350d6ab94095a799f42d86e8b970               |
++------------------+------------------------------------------------+
+********************************************************************************************************************************
+********************************************************************************************************************************
+
+Create rules in default security group to allow ping (ICMP) and SSH (TCP 22) to instances. 
+
+
+
+http://docs.openstack.org/admin-guide-cloud/content/enabling_ping_and_ssh.html
+
+(neutron) security-group-rule-create --protocol icmp --direction ingress default
+Created a new security_group_rule:
+
++-------------------+--------------------------------------+
+| Field             | Value                                |
++-------------------+--------------------------------------+
+| direction         | ingress                              |
+| ethertype         | IPv4                                 |
+| id                | c5450ad3-199b-4a9d-8e72-258bccaa3920 |
+| port_range_max    |                                      |
+| port_range_min    |                                      |
+| protocol          | icmp                                 |
+| remote_group_id   |                                      |
+| remote_ip_prefix  |                                      |
+| security_group_id | a7156874-bc6f-4243-9379-df4df876fd26 |
+| tenant_id         | 6d42350d6ab94095a799f42d86e8b970     |
++-------------------+--------------------------------------+
+
+
+(neutron) security-group-rule-create --protocol tcp --port-range-min 22 --port-range-max 22 --direction ingress default
+Created a new security_group_rule:
+
++-------------------+--------------------------------------+
+| Field             | Value                                |
++-------------------+--------------------------------------+
+| direction         | ingress                              |
+| ethertype         | IPv4                                 |
+| id                | b4ac1846-538a-4f11-a5b3-b5185b39f812 |
+| port_range_max    | 22                                   |
+| port_range_min    | 22                                   |
+| protocol          | tcp                                  |
+| remote_group_id   |                                      |
+| remote_ip_prefix  |                                      |
+| security_group_id | a7156874-bc6f-4243-9379-df4df876fd26 |
+| tenant_id         | 6d42350d6ab94095a799f42d86e8b970     |
++-------------------+--------------------------------------+
+
+
+**************************************************************************************************************************************
+**************************************************************************************************************************************
+Create three new virtual machine instances using ubuntu 14.04 image and flavor m1.tiny. The names of the machines should be lab1, lab2 and lab3.
+Each instance should have first network interface (traditionally called eth0 in linux) connected to the given labrat-username-net. In addition lab1 should have connections to both networks you created in previous step. lab2 should have second interface connected to subnet 10.1.0.0/24 and lab3 to 10.128.0.0/24. 
+
+http://docs.openstack.org/user-guide/content/launch_from_image.html
+
+ glance image-list // show the available images
+
++--------------------------------------+-------------------------------------------+-------------+------------------+-----------+--------+
+| ID                                   | Name                                      | Disk Format | Container Format | Size      | Status |
++--------------------------------------+-------------------------------------------+-------------+------------------+-----------+--------+
+| 26cf31a8-65c9-4798-b46f-1f64a8f562cf | cirros-0.3.2-x86_64                       | qcow2       | bare             | 13167616  | active |
+| 127add59-f13a-46ab-a0e1-fdea15b44258 | Ubuntu-14.04.1_LTS_server_AMD_64_20150112 | qcow2       | bare             | 256246272 | active |
++--------------------------------------+-------------------------------------------+-------------+------------------+-----------+--------+
+
+ nova image-list
++--------------------------------------+-------------------------------------------+--------+--------+
+| ID                                   | Name                                      | Status | Server |
++--------------------------------------+-------------------------------------------+--------+--------+
+| 127add59-f13a-46ab-a0e1-fdea15b44258 | Ubuntu-14.04.1_LTS_server_AMD_64_20150112 | ACTIVE |        |
+| 26cf31a8-65c9-4798-b46f-1f64a8f562cf | cirros-0.3.2-x86_64                       | ACTIVE |        |
++--------------------------------------+-------------------------------------------+--------+--------+
+
+
+nova flavor-list // show the available images
++--------------------------------------+-----------+-----------+------+-----------+------+-------+-------------+-----------+
+| ID                                   | Name      | Memory_MB | Disk | Ephemeral | Swap | VCPUs | RXTX_Factor | Is_Public |
++--------------------------------------+-----------+-----------+------+-----------+------+-------+-------------+-----------+
+| 2                                    | m1.small  | 2048      | 20   | 0         |      | 1     | 1.0         | True      |
+| 3                                    | m1.medium | 4096      | 40   | 0         |      | 2     | 1.0         | True      |
+| 4                                    | m1.large  | 8192      | 80   | 0         |      | 4     | 1.0         | True      |
+| 4d3a6167-54d0-46d3-b5dc-2fa4049e4a25 | m1.tiny   | 512       | 3    | 0         |      | 1     | 1.0         | True      |
+| 5                                    | m1.xlarge | 16384     | 160  | 0         |      | 8     | 1.0         | True      |
+| e247f7cf-040f-423c-8daa-081c37700573 | m1.mini   | 512       | 7    | 0         |      | 1     | 1.0         | True      |
++--------------------------------------+-----------+-----------+------+-----------+------+-------+-------------+-----------+
+
+
+neutron net-list
++--------------------------------------+-------------------+------------------------------------------------------+
+| id                                   | name              | subnets                                              |
++--------------------------------------+-------------------+------------------------------------------------------+
+| 15f52296-a11d-4bdb-b997-ceea03de2be7 | net1              | b9b80e10-52b3-4494-9996-c234284b5a08 10.1.0.0/24     |
+| 4c2c928d-5adf-44a1-9e6b-722978cf089f |               net | 4043eb97-9246-417e-8677-cbecbcc47832 10.0.8.0/24     |
+| 53afb2ed-8c17-498e-aaac-6cff5ff8bdd5 | ext-net           | 7ea280e5-c2fa-438b-84be-d7ac491aa02a 130.233.42.0/24 |
+| a59939d3-69fa-43be-aa8a-752788894766 | net2              | 39933a43-a1f3-4962-b4c2-c27dad77f619 10.128.0.0/24   |
++--------------------------------------+-------------------+------------------------------------------------------+
+
+ nova keypair-list
++--------+-------------------------------------------------+
+| Name   | Fingerprint                                     |
++--------+-------------------------------------------------+
+| 45     | 5b:f1:     :92:8e:48:60:50:c4:80:c4:9d:25:e0:62 |
++--------+-------------------------------------------------+
+
+nova secgroup-list
++--------------------------------------+---------+-------------+
+| Id                                   | Name    | Description |
++--------------------------------------+---------+-------------+
+| a7156874-bc6f-4243-9379-df4df876fd26 | default | default     |
++--------------------------------------+---------+-------------+
+
+
+nova boot --flavor 4d3a6167-54d0-46d3-b5dc-2fa4049e4a25 --image 127add59-f13a-46ab-a0e1-fdea15b44258 --nic net-id=4c2c928d-5adf-44a1-9e6b-722978cf089f --key-name 464235 --security-groups a7156874-bc6f-4243-9379-df4df876fd26  lab1 
++--------------------------------------+----------------------------------------------------------------------------------+
+| Property                             | Value                                                                            |
++--------------------------------------+----------------------------------------------------------------------------------+
+| OS-DCF:diskConfig                    | MANUAL                                                                           |
+| OS-EXT-AZ:availability_zone          | nova                                                                             |
+| OS-EXT-STS:power_state               | 0                                                                                |
+| OS-EXT-STS:task_state                | scheduling                                                                       |
+| OS-EXT-STS:vm_state                  | building                                                                         |
+| OS-SRV-USG:launched_at               | -                                                                                |
+| OS-SRV-USG:terminated_at             | -                                                                                |
+| accessIPv4                           |                                                                                  |
+| accessIPv6                           |                                                                                  |
+| adminPass                            | 6BtNVGUR7ppu                                                                     |
+| config_drive                         |                                                                                  |
+| created                              | 2015-01-21T19:23:58Z                                                             |
+| flavor                               | m1.tiny (4d3a6167-54d0-46d3-b5dc-2fa4049e4a25)                                   |
+| hostId                               |                                                                                  |
+| id                                   | 977af919-f1f1-4d24-9639-094aca63e977                                             |
+| image                                | Ubuntu-14.04.1_LTS_server_AMD_64_20150112 (127add59-f13a-46ab-a0e1-fdea15b44258) |
+| key_name                             | 464235                                                                           |
+| metadata                             | {}                                                                               |
+| name                                 | lab1                                                                             |
+| os-extended-volumes:volumes_attached | []                                                                               |
+| progress                             | 0                                                                                |
+| security_groups                      | a7156874-bc6f-4243-9379-df4df876fd26                                             |
+| status                               | BUILD                                                                            |
+| tenant_id                            | 6d42350d6ab94095a799f42d86e8b970                                                 |
+| updated                              | 2015-01-21T19:23:58Z                                                             |
+| user_id                              | 9335beb4262641c09f4624fa9cf66ba4                                                 |
++--------------------------------------+----------------------------------------------------------------------------------+
+
+
+
+nova boot --flavor 4d3a6167-54d0-46d3-b5dc-2fa4049e4a25 --image 127add59-f13a-46ab-a0e1-fdea15b44258 --nic net-id=4c2c928d-5adf-44a1-9e6b-722978cf089f --key-name 464235 --security-groups a7156874-bc6f-4243-9379-df4df876fd26  lab2
++--------------------------------------+----------------------------------------------------------------------------------+
+| Property                             | Value                                                                            |
++--------------------------------------+----------------------------------------------------------------------------------+
+| OS-DCF:diskConfig                    | MANUAL                                                                           |
+| OS-EXT-AZ:availability_zone          | nova                                                                             |
+| OS-EXT-STS:power_state               | 0                                                                                |
+| OS-EXT-STS:task_state                | scheduling                                                                       |
+| OS-EXT-STS:vm_state                  | building                                                                         |
+| OS-SRV-USG:launched_at               | -                                                                                |
+| OS-SRV-USG:terminated_at             | -                                                                                |
+| accessIPv4                           |                                                                                  |
+| accessIPv6                           |                                                                                  |
+| adminPass                            | vhrodKgdEi5V                                                                     |
+| config_drive                         |                                                                                  |
+| created                              | 2015-01-22T04:12:58Z                                                             |
+| flavor                               | m1.tiny (4d3a6167-54d0-46d3-b5dc-2fa4049e4a25)                                   |
+| hostId                               |                                                                                  |
+| id                                   | c5230522-425c-4af0-a5a7-90814b687ca6                                             |
+| image                                | Ubuntu-14.04.1_LTS_server_AMD_64_20150112 (127add59-f13a-46ab-a0e1-fdea15b44258) |
+| key_name                             | 464235                                                                           |
+| metadata                             | {}                                                                               |
+| name                                 | lab2                                                                             |
+| os-extended-volumes:volumes_attached | []                                                                               |
+| progress                             | 0                                                                                |
+| security_groups                      | a7156874-bc6f-4243-9379-df4df876fd26                                             |
+| status                               | BUILD                                                                            |
+| tenant_id                            | 6d42350d6ab94095a799f42d86e8b970                                                 |
+| updated                              | 2015-01-22T04:12:58Z                                                             |
+| user_id                              | 9335beb4262641c09f4624fa9cf66ba4                                                 |
++--------------------------------------+----------------------------------------------------------------------------------+
+
+
+
+nova boot --flavor 4d3a6167-54d0-46d3-b5dc-2fa4049e4a25 --image 127add59-f13a-46ab-a0e1-fdea15b44258 --nic net-id=4c2c928d-5adf-44a1-9e6b-722978cf089f --key-name 464235 --security-groups a7156874-bc6f-4243-9379-df4df876fd26  lab3
++--------------------------------------+----------------------------------------------------------------------------------+
+| Property                             | Value                                                                            |
++--------------------------------------+----------------------------------------------------------------------------------+
+| OS-DCF:diskConfig                    | MANUAL                                                                           |
+| OS-EXT-AZ:availability_zone          | nova                                                                             |
+| OS-EXT-STS:power_state               | 0                                                                                |
+| OS-EXT-STS:task_state                | scheduling                                                                       |
+| OS-EXT-STS:vm_state                  | building                                                                         |
+| OS-SRV-USG:launched_at               | -                                                                                |
+| OS-SRV-USG:terminated_at             | -                                                                                |
+| accessIPv4                           |                                                                                  |
+| accessIPv6                           |                                                                                  |
+| adminPass                            | hHEKe8RsWT2f                                                                     |
+| config_drive                         |                                                                                  |
+| created                              | 2015-01-22T04:13:29Z                                                             |
+| flavor                               | m1.tiny (4d3a6167-54d0-46d3-b5dc-2fa4049e4a25)                                   |
+| hostId                               |                                                                                  |
+| id                                   | 2a5892c0-5340-4961-a18b-96e606c5d3ab                                             |
+| image                                | Ubuntu-14.04.1_LTS_server_AMD_64_20150112 (127add59-f13a-46ab-a0e1-fdea15b44258) |
+| key_name                             | 464235                                                                           |
+| metadata                             | {}                                                                               |
+| name                                 | lab3                                                                             |
+| os-extended-volumes:volumes_attached | []                                                                               |
+| progress                             | 0                                                                                |
+| security_groups                      | a7156874-bc6f-4243-9379-df4df876fd26                                             |
+| status                               | BUILD                                                                            |
+| tenant_id                            | 6d42350d6ab94095a799f42d86e8b970                                                 |
+| updated                              | 2015-01-22T04:13:29Z                                                             |
+| user_id                              | 9335beb4262641c09f4624fa9cf66ba4                                                 |
++--------------------------------------+----------------------------------------------------------------------------------+
+
+https://openstack.redhat.com/Difference_between_Floating_IP_and_private_IP
+nova interface-attach --net-id 15f52296-a11d-4bdb-b997-ceea03de2be7 lab1
+nova interface-attach --net-id a59939d3-69fa-43be-aa8a-752788894766 lab1
+nova interface-attach --net-id 15f52296-a11d-4bdb-b997-ceea03de2be7 lab2
+nova interface-attach --net-id a59939d3-69fa-43be-aa8a-752788894766 lab3
+
+********************************************************************************************************************************
+For lab1 assign floating ip from 130.233.42.0/24 network to first network interface after you have created the instance. 
+
+ neutron port-list
++--------------------------------------+------+-------------------+-----------------------------------------------------------------------------------+
+| id                                   | name | mac_address       | fixed_ips                                                                         |
++--------------------------------------+------+-------------------+-----------------------------------------------------------------------------------+
+| 11250bef-a3fb-4f1c-9df1-3c7db8056e29 |      | fa:16:3e:bc:1a:db | {"subnet_id": "4043eb97-9246-417e-8677-cbecbcc47832", "ip_address": "10.0.8.5"}   |
+| 22f75b24-68d7-4c0e-8863-d5c3d7fd9cb1 |      | fa:16:3e:47:1a:4d | {"subnet_id": "39933a43-a1f3-4962-b4c2-c27dad77f619", "ip_address": "10.128.0.3"} |
+| 5ea86ff5-7b63-4a31-96d0-bb68afaaa5dc |      | fa:16:3e:f1:c0:5c | {"subnet_id": "b9b80e10-52b3-4494-9996-c234284b5a08", "ip_address": "10.1.0.4"}   |
+| 63411c1a-204a-4cf3-ad3b-027ce9dd2c63 |      | fa:16:3e:ae:29:e5 | {"subnet_id": "4043eb97-9246-417e-8677-cbecbcc47832", "ip_address": "10.0.8.2"}   |
+| 6e4512b9-6220-4462-9fc8-9da5746b8b3b |      | fa:16:3e:4f:32:a3 | {"subnet_id": "b9b80e10-52b3-4494-9996-c234284b5a08", "ip_address": "10.1.0.3"}   |
+| 82b56870-6027-4363-9092-b77471739299 |      | fa:16:3e:98:a9:7d | {"subnet_id": "4043eb97-9246-417e-8677-cbecbcc47832", "ip_address": "10.0.8.3"}   |
+| 830eede8-8278-4036-9070-e34a862afc24 |      | fa:16:3e:e6:61:6a | {"subnet_id": "4043eb97-9246-417e-8677-cbecbcc47832", "ip_address": "10.0.8.1"}   |
+| 83618ab2-965b-47a7-876b-397156fb6f77 |      | fa:16:3e:f7:2e:82 | {"subnet_id": "39933a43-a1f3-4962-b4c2-c27dad77f619", "ip_address": "10.128.0.2"} |
+| ad63420a-2d13-48bb-8a98-0ff45437ba00 |      | fa:16:3e:e0:c8:dc | {"subnet_id": "4043eb97-9246-417e-8677-cbecbcc47832", "ip_address": "10.0.8.4"}   |
+| ccfd787d-cef4-4224-bb5f-39287a23f5bf |      | fa:16:3e:16:d8:d6 | {"subnet_id": "39933a43-a1f3-4962-b4c2-c27dad77f619", "ip_address": "10.128.0.1"} |
+| fa3f75c5-9ec7-43aa-94d7-d611590c06f9 |      | fa:16:3e:3b:1c:53 | {"subnet_id": "b9b80e10-52b3-4494-9996-c234284b5a08", "ip_address": "10.1.0.2"}   |
++--------------------------------------+------+-------------------+-----------------------------------------------------------------------------------+
+
+ neutron floatingip-list
++--------------------------------------+------------------+---------------------+---------+
+| id                                   | fixed_ip_address | floating_ip_address | port_id |
++--------------------------------------+------------------+---------------------+---------+
+| e6b2639f-966e-4856-b0c3-dcd791497c0a |                  | 130.233.1111.       |         |
+
++--------------------------------------+------------------+---------------------+---------+
+neutron floatingip-associate e6b2639f-966e-4856-b0c3-dcd791497c0a 82b56870-6027-4363-9092-b77471739299
+Associated floatingip e6b2639f-966e-4856-b0c3-dcd791497c0a
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
